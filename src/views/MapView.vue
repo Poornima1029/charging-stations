@@ -2,7 +2,7 @@
 import { onMounted, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStationsStore, type ChargingStation } from '../stores/stations'
-import L, { LatLngBoundsExpression, Marker } from 'leaflet'
+import L from 'leaflet'
 
 const router = useRouter()
 const stationsStore = useStationsStore()
@@ -23,10 +23,12 @@ onMounted(async () => {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map.value)
 
-      // Add markers
-      const markers: Marker[] = []
+      const boundsCoords: [number, number][] = []
 
       stationsStore.stations.forEach(station => {
+        const lat = Number(station.location.latitude)
+        const lng = Number(station.location.longitude)
+
         const iconUrl = station.status === 'active'
           ? 'https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/images/marker-icon.png'
           : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png'
@@ -40,10 +42,7 @@ onMounted(async () => {
           shadowSize: [41, 41]
         })
 
-        const lat = Number(station.location.latitude)
-        const lng = Number(station.location.longitude)
-
-        const marker = L.marker([lat, lng], { icon })
+        const marker = L.marker([lat, lng], { icon }).addTo(map.value)
 
         marker.bindPopup(`
           <strong>${station.name}</strong><br>
@@ -56,15 +55,11 @@ onMounted(async () => {
           showStationInfo.value = true
         })
 
-        marker.addTo(map.value!)
-        markers.push(marker)
+        boundsCoords.push([lat, lng])
       })
 
-      // Fit map to bounds if markers exist
-      if (markers.length > 0) {
-        const bounds: LatLngBoundsExpression = markers.map(m =>
-          m.getLatLng()
-        )
+      if (boundsCoords.length > 0) {
+        const bounds = L.latLngBounds(boundsCoords)
         map.value.fitBounds(bounds, { padding: [50, 50] })
       }
     }
