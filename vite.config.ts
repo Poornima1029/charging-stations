@@ -1,15 +1,17 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-// https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [vue()],
-  server: {
+  build: {
+    outDir: 'dist', // default, but explicitly stating it is safe
+  },
+  server: mode === 'development' ? {
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
       },
     },
-  },
-})
+  } : undefined,
+}))
