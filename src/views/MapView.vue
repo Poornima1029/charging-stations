@@ -1,121 +1,133 @@
 <template>
-  <div id="map" style="height: 500px; width: 100%;"></div>
+  <div ref="mapContainer" class="map-container"></div>
+
+  <div v-if="showStationInfo && selectedStation" class="station-info">
+    <h2>{{ selectedStation.name }}</h2>
+    <p>{{ selectedStation.powerOutput }} kW - {{ selectedStation.connectorType }}</p>
+    <p>Status: {{ selectedStation.status }}</p>
+    <button @click="showStationInfo = false">Close</button>
+  </div>
 </template>
 
-<script>
-import * as L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+<script setup lang="ts">
+import { onMounted, ref, watch } from 'vue';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
-export default {
-  name: 'ChargerMap',
-  props: {
-    chargers: {
-      type: Array,
-      default: () => []
-    }
-  },
-  data() {
-    return {
-      map: null,
-      markers: []
-    }
-  },
-  mounted() {
-    this.initMap()
-  },
-  watch: {
-    chargers: {
-      immediate: true,
-      handler(newChargers) {
-        if (this.map && newChargers.length) {
-          this.renderMarkers()
-        }
-      }
-    }
-  },
-  methods: {
-    initMap() {
-      this.map = L.map('map').setView([12.9716, 77.5946], 13) // You can adjust the default location
+import { useStationsStore } from '@/stores/stations'; // ✅ Check spelling & file name
+import type { Station } from '@/interfaces/station.interface';
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(this.map)
-    },
-    renderMarkers() {
-      // Remove existing markers from the map
-      this.markers.forEach(marker => this.map.removeLayer(marker))
-      this.markers = []
+const stationsStore = useStationsStore();
 
-      // Add new markers for each charger/station
-      this.chargers.forEach(charger => {
-        const lat = charger.latitude || charger.location?.latitude
-        const lng = charger.longitude || charger.location?.longitude
+const map = ref<L.Map>();
+const mapContainer = ref<HTMLDivElement | null>(null);
+const markerClusterGroup = ref<L.MarkerClusterGroup | null>(null);
+const selectedStation = ref<Station | null>(null);
+const showStationInfo = ref(false);
 
-        if (lat && lng) {
-          const marker = L.marker([lat, lng])
-            .addTo(this.map)
-            .bindPopup(`
-              <strong>${charger.name}</strong><br>
-              Power: ${charger.powerOutput || 'N/A'} kW<br>
-              Status: ${charger.status || 'Unknown'}<br>
-              Connector: ${charger.connectorType || 'Unknown'}
-            `)
-          this.markers.push(marker)
-        }
-      })
+function getMarkerIcon(status: string): L.Icon {
+  const iconUrl = {
+    Available: '/icons/green-marker.png',
+    Occupied: '/icons/red-marker.png',
+    'Out of Service': '/icons/gray-marker.png',
+  }[status] || '/icons/default-marker.png';
 
-      // Fit the map view to markers if present
-      if (this.markers.length > 0) {
-        const group = L.featureGroup(this.markers)
-        this.map.fitBounds(group.getBounds().pad(0.2))
-      }
-    }
-  }
+  return L.icon({
+    iconUrl,
+    iconSize: [30, 42],
+    iconAnchor: [15, 42],
+    popupAnchor: [0, -40],
+  });
 }
+
+function updateMarkers() {
+  if (!markerClusterGroup.value) return;
+
+  markerClusterGroup.value.clearLayers();
+
+  stationsStore.stations.forEach((station: { location: { latitude: number; longitude: number; }; status: string; name: any; powerOutput: any; connectorType: any; }) => {
+    const marker = L.marker(
+      [station.location.latitude, station.location.longitude],
+      { icon: getMarkerIcon(station.status) }
+    );
+
+    marker.bindPopup(`
+      <div class="station-popup">
+        <h3>${station.name}</h3>
+        <p>${station.powerOutput} kW - ${station.connectorType}</p>
+        <span class="status ${station.status.replace(/\s+/g, '-')}">${station.status}</span>
+      </div>
+    `);
+
+    marker.on('click', () => {
+      selectedStation.value = station;
+      showStationInfo.value = true;
+    });
+
+    markerClusterGroup.value?.addLayer(marker);
+  });
+}
+
+onMounted(() => {
+  if (!mapContainer.value) return;
+
+  map.value = L.map(mapContainer.value).setView([20.5937, 78.9629], 5); // India center
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+  }).addTo(map.value);
+
+  markerClusterGroup.value = L.markerClusterGroup();
+  map.value.addLayer(markerClusterGroup.value);
+
+  updateMarkers();
+});
+
+watch(
+  () => stationsStore.stations,
+  updateMarkers,
+  { deep: true }
+);
 </script>
 
 <style scoped>
-.charger-map {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
-  overflow: hidden;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.map-header {
-  background-color: #004080;
-  color: white;
-  padding: 16px 20px;
-  font-weight: 700;
-  font-size: 1.6rem;
-  text-align: center;
-  user-select: none;
-}
-
-#map {
-  flex: 1;
+.map-container {
+  height: 100vh;
   width: 100%;
-  min-height: 400px;
 }
 
-.leaflet-container {
-  background: #e6f0ff;
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
+.station-info {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-@media (max-width: 600px) {
-  .map-header {
-    font-size: 1.3rem;
-    padding: 12px 16px;
-  }
+.station-popup {
+  font-size: 14px;
+}
 
-  #map {
-    min-height: 300px;
-  }
+.status {
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: white;
+}
+
+.status.Available {
+  background: green;
+}
+.status.Occupied {
+  background: red;
+}
+.status.Out-of-Service {
+  background: gray;
 }
 </style>

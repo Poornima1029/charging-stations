@@ -1,18 +1,12 @@
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import path from 'path';
 
-export default defineConfig(({ mode }) => ({
-  base: './',  // ✅ this is the fix
+export default defineConfig({
   plugins: [vue()],
-  build: {
-    outDir: 'dist',
-  },
-  server: mode === 'development' ? {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-      },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
     },
-  } : undefined,
-}))
+  },
+});

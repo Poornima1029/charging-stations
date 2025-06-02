@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import 'leaflet/dist/leaflet.css';
 
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -79,4 +80,8 @@ html, body {
 
 .status-inactive {
   @apply bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium;
+}
+html, body, #app {
+  height: 100%;
+  margin: 0;
 }

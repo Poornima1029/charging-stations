@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { useStationsStore } from '../stores/stations'
 import StationCard from '../components/StationCard.vue'
 import FilterPanel from '../components/FilterPanel.vue'
-import ChargerMap from '../views/MapView.vue'  // updated import for the new map component
 
 const router = useRouter()
 const stationsStore = useStationsStore()
@@ -28,6 +27,7 @@ function goToAddStation() {
 
 function handleEdit(stationId: string) {
   router.push(`/stations/${stationId}/edit`)
+
 }
 
 function confirmDelete(stationId: string) {
@@ -77,12 +77,8 @@ function cancelDelete() {
         <FilterPanel @filter="stationsStore.fetchStations()" />
       </div>
 
-      <!-- Stations List + Map -->
-      <div class="lg:col-span-3 space-y-8">
-        <!-- Map showing all stations -->
-        <ChargerMap :chargers="stationsStore.filteredStations" />
-
-        <!-- Stations List -->
+      <!-- Stations List -->
+      <div class="lg:col-span-3">
         <div v-if="isLoading" class="flex justify-center items-center h-64">
           <svg class="animate-spin h-8 w-8 text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -143,15 +139,13 @@ function cancelDelete() {
         <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
           <button
             @click="handleDelete"
-            type="button"
-            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 sm:ml-3 sm:w-auto sm:text-sm"
+            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
           >
             Delete
           </button>
           <button
             @click="cancelDelete"
-            type="button"
-            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:w-auto sm:text-sm"
+            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:w-auto sm:text-sm"
           >
             Cancel
           </button>
