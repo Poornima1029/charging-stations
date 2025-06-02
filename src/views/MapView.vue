@@ -1,94 +1,76 @@
 <template>
-  <section class="charger-map">
-    <header class="map-header">
-      <h2>🗺 Charger Locations</h2>
-    </header>
-    <div id="map" ref="mapContainer"></div>
-  </section>
+  <div id="map" style="height: 500px; width: 100%;"></div>
 </template>
 
 <script>
-import { onMounted, ref, watch } from 'vue'
+import * as L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 
 export default {
+  name: 'ChargerMap',
   props: {
     chargers: {
       type: Array,
-      default: () => [],
-    },
+      default: () => []
+    }
   },
-  setup(props) {
-    const mapContainer = ref(null)
-    let mapInstance = null
-    let markers = []
-
-    onMounted(async () => {
-      if (!mapContainer.value) return
-
-      const L = await import('leaflet')
-
-      mapInstance = L.map(mapContainer.value).setView([20, 0], 2)
+  data() {
+    return {
+      map: null,
+      markers: []
+    }
+  },
+  mounted() {
+    this.initMap()
+  },
+  watch: {
+    chargers: {
+      immediate: true,
+      handler(newChargers) {
+        if (this.map && newChargers.length) {
+          this.renderMarkers()
+        }
+      }
+    }
+  },
+  methods: {
+    initMap() {
+      this.map = L.map('map').setView([12.9716, 77.5946], 13) // You can adjust the default location
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }).addTo(mapInstance)
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(this.map)
+    },
+    renderMarkers() {
+      // Remove existing markers from the map
+      this.markers.forEach(marker => this.map.removeLayer(marker))
+      this.markers = []
 
-      updateMarkers(L)
-    })
+      // Add new markers for each charger/station
+      this.chargers.forEach(charger => {
+        const lat = charger.latitude || charger.location?.latitude
+        const lng = charger.longitude || charger.location?.longitude
 
-    const updateMarkers = (L) => {
-      if (!mapInstance || !L) return
-
-      // Remove previous markers
-      markers.forEach(marker => mapInstance.removeLayer(marker))
-      markers = []
-
-      // Add new markers
-      props.chargers.forEach(charger => {
-        if (charger.latitude && charger.longitude) {
-          const iconUrl = charger.status === 'active'
-            ? 'https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/images/marker-icon.png'
-            : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png'
-
-          const icon = L.icon({
-            iconUrl,
-            shadowUrl: 'https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41],
-          })
-
-          const marker = L.marker([charger.latitude, charger.longitude], { icon })
-            .addTo(mapInstance)
+        if (lat && lng) {
+          const marker = L.marker([lat, lng])
+            .addTo(this.map)
             .bindPopup(`
-              <strong>${charger.name}</strong><br/>
-              ${charger.location}<br/>
-              Type: ${charger.type}<br/>
-              <span style="color:${charger.status === 'active' ? 'green' : 'red'}">${charger.status}</span><br/>
-              $${charger.price?.toFixed(2) || 0} / kWh
+              <strong>${charger.name}</strong><br>
+              Power: ${charger.powerOutput || 'N/A'} kW<br>
+              Status: ${charger.status || 'Unknown'}<br>
+              Connector: ${charger.connectorType || 'Unknown'}
             `)
-
-          markers.push(marker)
+          this.markers.push(marker)
         }
       })
 
-      // Fit bounds if any markers
-      if (markers.length) {
-        const group = L.featureGroup(markers)
-        mapInstance.fitBounds(group.getBounds().pad(0.2))
+      // Fit the map view to markers if present
+      if (this.markers.length > 0) {
+        const group = L.featureGroup(this.markers)
+        this.map.fitBounds(group.getBounds().pad(0.2))
       }
     }
-
-    watch(() => props.chargers, async () => {
-      const L = await import('leaflet')
-      updateMarkers(L)
-    }, { deep: true })
-
-    return {
-      mapContainer,
-    }
-  },
+  }
 }
 </script>
 
